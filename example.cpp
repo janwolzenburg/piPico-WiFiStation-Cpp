@@ -51,7 +51,6 @@ int main( void ){
     while( WiFiStation::isScanActive() && get_absolute_time() < scan_end );
     
 
-
     // Get and print available wifis
     vector<cyw43_ev_scan_result_t> available_networks = WiFiStation::getAvailableWifis();
 
@@ -102,8 +101,8 @@ int main( void ){
     // Instantiate wifi station
     WiFiStation station{ string{ (const char*)( selected_wifi.ssid ) }, password, authentification };
     
-    // Try to connect 5 time with 15 second timeout
-    station.connect( 5, 15000 );
+    // Start connection
+    station.connect();
 
     // Flag to know when connection was made
     bool wifi_connected = false;
@@ -118,6 +117,7 @@ int main( void ){
             wifi_connected = true;
         }
 
+        // Toggle LED
         if( toggle_led ){
             toggle_led = false;
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, !cyw43_arch_gpio_get( CYW43_WL_GPIO_LED_PIN ) );

@@ -42,8 +42,6 @@ class WiFiStation{
 
     WiFiStation& operator=( const WiFiStation& wifi_station ) = delete;
 
-    WiFiStation& operator=( const WiFiStation&& wifi_station );
-
 
     static int initialise( uint32_t country );
 
@@ -57,11 +55,12 @@ class WiFiStation{
 
     static uint32_t getAuthentificationFromScanResult( const uint8_t authentification_from_scan );
 
-    bool connected( void ) const{ return connected_; };
 
-    int connect( uint8_t tries, uint32_t timeout );
+    int connect( void );
 
     int disconnect( void );
+
+    bool connected( void ) const{ return connected_; };
 
 
     private:
@@ -71,15 +70,16 @@ class WiFiStation{
     uint32_t authentification_;     /*!<*/
     bool connected_;                /*!<*/
 
-    static bool one_instance_connecting_;
-    static bool one_instance_connected_;               
-    static class WiFiStation* connected_station_;         /*!<*/
+    static bool one_instance_connecting_;           /*!<*/
+    static bool one_instance_connected_;            /*!<*/   
+    static class WiFiStation* connected_station_;   /*!<*/
 
-    static repeating_timer_t connection_check_timer_;
-    static vector<cyw43_ev_scan_result_t> available_wifis_;     /*!<*/
+    static repeating_timer_t connection_check_timer_;       /*!<*/
+    static vector<cyw43_ev_scan_result_t> available_wifis_; /*!<*/
     
 
     static int scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result );
+
 
     static bool checkConnection( repeating_timer_t* timer );
 
