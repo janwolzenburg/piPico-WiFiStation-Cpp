@@ -44,6 +44,7 @@ else()
         piPicoWiFiStation
         pico_stdlib
         pico_cyw43_arch_lwip_poll
+        pico_time
     )
 
     # Options for compilation warnings

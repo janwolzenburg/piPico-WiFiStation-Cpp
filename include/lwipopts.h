@@ -6,6 +6,14 @@
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html)
 //
 
+#ifndef NO_SYS
+#define NO_SYS                      1
+#endif
+
+#ifndef LWIP_SOCKET
+#define LWIP_SOCKET                 0
+#endif
+
 #if PICO_CYW43_ARCH_POLL
 #define MEM_LIBC_MALLOC             1
 #else
