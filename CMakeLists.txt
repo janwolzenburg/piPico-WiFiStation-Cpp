@@ -21,7 +21,7 @@ endif()
 pico_sdk_init()
 
 # CYW43 must be target
-if (NOT TARGET pico_cyw43_arch)
+if (NOT TARGET pico_cyw43_arch AND TARGET tinyusb_device)
     message("Skipping build as WiFi support is not available")
 
 else()
@@ -43,9 +43,15 @@ else()
     target_link_libraries(
         piPicoWiFiStation
         pico_stdlib
-        pico_cyw43_arch_lwip_poll
+        pico_time
+        pico_cyw43_arch_lwip_threadsafe_background 
         pico_time
     )
+
+    pico_enable_stdio_usb( piPicoWiFiStation 1 )     # Enable serial data over USB
+    pico_enable_stdio_uart( piPicoWiFiStation 0 )    # Disable serial data over UART
+
+    pico_add_extra_outputs( piPicoWiFiStation )
 
     # Options for compilation warnings
     add_compile_options(

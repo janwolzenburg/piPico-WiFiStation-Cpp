@@ -11,18 +11,38 @@
 
 
 bool WiFiStation::one_instance_connecting_ = false;
-repeating_timer_t WiFiStation::connection_timer_ = repeating_timer_t{};
-WiFiStation* WiFiStation::connecting_station_ = nullptr;
 bool WiFiStation::one_instance_connected_ = false;
+WiFiStation* WiFiStation::connected_station_ = nullptr;
+
+repeating_timer_t WiFiStation::connection_check_timer_ = repeating_timer_t{};
 vector<cyw43_ev_scan_result_t> WiFiStation::available_wifis_ = vector<cyw43_ev_scan_result_t>( 0, cyw43_ev_scan_result_t{} );
+
 
 WiFiStation::WiFiStation( const string ssid, const string password, const uint32_t authentification ) : 
     ssid_( ssid ),
     password_( password ),
     authentification_( authentification ),
-    connected_( false ),
-    connection_tries_left_( 0 )
-{}
+    connected_( false )
+{
+    if( ssid_.length() > ssid_size ){
+        ssid_.erase( ssid_size );
+        printf( "SSID to long!\r\n" );
+    }
+
+    if( password_.length() > password_size ){
+        password_.erase( password_size );
+        printf( "Password to long!\r\n" );
+    }
+
+    if( authentification_ != CYW43_AUTH_OPEN &&
+        authentification_ != CYW43_AUTH_WPA2_AES_PSK &&
+        authentification_ != CYW43_AUTH_WPA2_MIXED_PSK &&
+        authentification_ != CYW43_AUTH_WPA_TKIP_PSK ){
+
+        authentification_ = CYW43_AUTH_OPEN;
+        printf( "Authentification mode invalid!\r\n" );
+    }
+}
 
 WiFiStation::WiFiStation( void ) :
     WiFiStation{ "", "", CYW43_AUTH_OPEN }
@@ -33,11 +53,20 @@ WiFiStation::~WiFiStation( void ){
 }
 
 int WiFiStation::initialise( uint32_t country ){
-    int return_code = cyw43_arch_init_with_country(CYW43_COUNTRY_GERMANY);
-    if( return_code != 0 )
+    int return_code = cyw43_arch_init_with_country( country );
+    if( return_code != 0 ){
+        printf( "CYW43 initialisatiion failed with %i\r\n", return_code );
         return return_code;
+    }
 
     cyw43_arch_enable_sta_mode();
+
+    // Add repeating timer
+    if( add_repeating_timer_ms( 500, checkConnection, nullptr, &connection_check_timer_ ) == false ){
+        printf( "Repeating timer for connection check could not be started!\r\n" );   
+        return -2;
+    }
+
     return 0;
 }
 
@@ -45,82 +74,51 @@ void WiFiStation::deinitialise( void ){
     cyw43_arch_deinit();
 }
 
-void WiFiStation::poll( void ){
+bool WiFiStation::checkConnection( repeating_timer_t* timer ){
 
-    // Check if initial connection succeeded
+    // No station connected or connection -> leave but keep timer running
+    if( connected_station_ == nullptr ){
+        return true;
+    }
+
+    int connection_status = cyw43_wifi_link_status( &cyw43_state, CYW43_ITF_STA );
+
+    // One station trying to connect?
     if( one_instance_connecting_ ){
-        int connection_status = cyw43_wifi_link_status( &cyw43_state, CYW43_ITF_STA );
-
+        
         // Check state
         switch( connection_status ){
+            
+            // Connection up
             case CYW43_LINK_JOIN:
+            case CYW43_LINK_UP:
                 one_instance_connected_ = true;
-                if( connecting_station_ != nullptr ){
-                    connecting_station_->connected_ = true;
-                }
+                one_instance_connecting_ = false;
+                connected_station_->connected_ = true;            
                 
-                cancel_connection();
+                printf( "Station connected!\r\n" );
             break;
 
+            // Bad authentification
             case CYW43_LINK_BADAUTH:
-                cancel_connection();
+                printf( "Bad authentification!\r\n" );
+                one_instance_connecting_ = false;
             break;
 
             default:
+                // Retry?
             break;
         }
-
+        
     }
 
-    cyw43_arch_poll();
-}
+    // Check if still connected
+    if( connected_station_->connected_ && connection_status != CYW43_LINK_UP && connection_status != CYW43_LINK_JOIN){
+        printf( "Connection lost!\r\n" );
+        connected_station_->connected_ = false;
+        one_instance_connected_ = false;   
+    }
 
-bool WiFiStation::cancel_connection( void ){
-    one_instance_connecting_ = false;
-    cancel_repeating_timer( &connection_timer_ );
-    connecting_station_ = nullptr;
-    return false;
-}
-
-bool WiFiStation::try_connect_callback( repeating_timer_t* timer ){
-
-    WiFiStation* station = static_cast<WiFiStation*>( timer->user_data );
-
-    // No tries left or other station is connected
-    if( station->connection_tries_left_ == 0 || one_instance_connected_ )
-        return cancel_connection();
-
-    // Local char pointer for password
-    const char* password = nullptr;
-
-    // Check if password is giebn when necessary
-    if( station->authentification_ != CYW43_AUTH_OPEN ){
-        if( station->password_.empty() )
-            return cancel_connection();; 
-        password = station->password_.c_str();
-    } 
-
-    // SSID given? 
-    if( station->ssid_.empty() )
-        return cancel_connection();;
-    
-    // Authetification valid?
-    if( station->authentification_ != CYW43_AUTH_OPEN &&
-        station->authentification_ != CYW43_AUTH_WPA2_AES_PSK &&
-        station->authentification_ != CYW43_AUTH_WPA2_MIXED_PSK &&
-        station->authentification_ != CYW43_AUTH_WPA_TKIP_PSK )
-        return cancel_connection();;
-
-    // Try to connect non blocking
-    int connection_status = cyw43_arch_wifi_connect_async(  station->ssid_.c_str(), 
-                                                            password, 
-                                                            station->authentification_ );
-
-    // Maximum tries reached -> cancel timer
-    if( --(station->connection_tries_left_) == 0 )
-        return cancel_connection();
-
-    // Continue timer
     return true;
 }
 
@@ -182,39 +180,67 @@ WiFiStation& WiFiStation::operator=( const WiFiStation&& wifi_station ){
     return *this;
 }
 
-bool WiFiStation::isConnected( void ){
-    
-    if( !connected_ )
-        return false;
-
-    int status = cyw43_tcpip_link_status( &cyw43_state, CYW43_ITF_STA ); 	
-
-    return one_instance_connected_ = connected_ = ( status == CYW43_LINK_UP );
-
-}
 
 int WiFiStation::connect( uint8_t tries, uint32_t timeout ){
 
-    // Connected via different instance or connection is in progress
-    if( one_instance_connected_ && !connected_ && !one_instance_connecting_ )
-        return -1;
-
     // Already connected
-    if( isConnected() )
+    if( connected_ ){
+        printf( "This station already connected!\r\n" );
         return 0;
+    }
 
-    // Set flags and connections state
-    connection_tries_left_ = tries;
+    // Connected via different instance or connection is in progress
+    if( one_instance_connected_ || one_instance_connecting_ ){
+        printf( "Different station already connected or trying to connect!\r\n" );
+        return -1;
+    }
+        
 
-    // Add repeating timer
-    if( add_repeating_timer_ms( timeout, try_connect_callback, this, &connection_timer_ ) == false )
-        return -2;
+    // Local char pointer for password
+    const char* password = nullptr;
+
+    // Check if password is giebn when necessary
+    if( authentification_ != CYW43_AUTH_OPEN ){
+        if( password_.empty() ){
+            printf( "Password cannot be ampty when network is not open!\r\n" );
+            return -1; 
+        }
+        password = password_.c_str();
+    } 
+
+    // SSID given? 
+    if( ssid_.empty() ){
+        printf("No SSID given!\r\n");
+        return -1;
+    }
+        
+    
+    // Authetification valid?
+    if( authentification_ != CYW43_AUTH_OPEN &&
+        authentification_ != CYW43_AUTH_WPA2_AES_PSK &&
+        authentification_ != CYW43_AUTH_WPA2_MIXED_PSK &&
+        authentification_ != CYW43_AUTH_WPA_TKIP_PSK ){
+        
+        printf("Authentification mode invalid!\r\n");
+        return -1;
+    }
 
     one_instance_connecting_ = true;
-    connecting_station_ = this;
+    connected_station_ = this;
+
+    printf("Connecting...\r\n");
+
+    // Try to connect non blocking
+    int connection_status = cyw43_arch_wifi_connect_async(  ssid_.c_str(), 
+                                                            password, 
+                                                            authentification_ );
+
+    if( connection_status != 0 ){
+        printf( "Could not start to connect. Error %u\r\n", connection_status );
+        return -1;
+    }
 
     return 0;
-
 }
 
 int WiFiStation::disconnect( void ){

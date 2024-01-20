@@ -49,8 +49,6 @@ class WiFiStation{
 
     static void deinitialise( void );
 
-    static void poll( void );
-
     static int scanForWifis( void );
 
     static bool isScanActive( void );
@@ -59,9 +57,7 @@ class WiFiStation{
 
     static uint32_t getAuthentificationFromScanResult( const uint8_t authentification_from_scan );
 
-    static bool cancel_connection( void );
-
-    bool isConnected( void );
+    bool connected( void ) const{ return connected_; };
 
     int connect( uint8_t tries, uint32_t timeout );
 
@@ -75,18 +71,18 @@ class WiFiStation{
     uint32_t authentification_;     /*!<*/
     bool connected_;                /*!<*/
 
-    uint8_t connection_tries_left_;
-
     static bool one_instance_connecting_;
-    static repeating_timer_t connection_timer_;
-    static class WiFiStation* connecting_station_;
-    static bool one_instance_connected_;                        /*!<*/
+    static bool one_instance_connected_;               
+    static class WiFiStation* connected_station_;         /*!<*/
+
+    static repeating_timer_t connection_check_timer_;
     static vector<cyw43_ev_scan_result_t> available_wifis_;     /*!<*/
     
 
     static int scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result );
 
-    static bool try_connect_callback( repeating_timer_t* timer );
+    static bool checkConnection( repeating_timer_t* timer );
+
 
 };
 

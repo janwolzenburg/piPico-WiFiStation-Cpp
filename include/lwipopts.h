@@ -6,13 +6,8 @@
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html)
 //
 
-#ifndef NO_SYS
-#define NO_SYS                      1
-#endif
-
-#ifndef LWIP_SOCKET
-#define LWIP_SOCKET                 0
-#endif
+#define NO_SYS                      1   // No OS awareness
+#define LWIP_SOCKET                 0   // No sockets
 
 #if PICO_CYW43_ARCH_POLL
 #define MEM_LIBC_MALLOC             1
@@ -20,6 +15,7 @@
 // MEM_LIBC_MALLOC is incompatible with non polling versions
 #define MEM_LIBC_MALLOC             0
 #endif
+
 #define MEM_ALIGNMENT               4
 #define MEM_SIZE                    4000
 #define MEMP_NUM_TCP_SEG            32
