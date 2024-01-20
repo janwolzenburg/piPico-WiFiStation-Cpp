@@ -115,9 +115,10 @@ class WiFiStation{
      * @brief Connect this station to network
      * @details Does return directly. Check with connected() whether connection was successful
      * 
+     * @param is_reconnect Flag to indicate whether connection is a reconnect after connection lost
      * @return int 0 on successful start of connection process
      */
-    int connect( void );
+    int connect( const bool is_reconnect = false );
 
     /*!
      * @brief Disconnect this station
@@ -159,6 +160,10 @@ class WiFiStation{
      * @return int Always 0
      */
     static int scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result );
+
+    static bool startConnectionCheck( const uint32_t interval = connection_check_interval );
+
+    static bool stopConnectionCheck( void );
 
     /*!
      * @brief Timer callback for repeated connection check

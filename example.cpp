@@ -65,7 +65,7 @@ int main( void ){
 
     uint16_t current_id = 0;
     for( const auto& network : available_networks ){
-        printf("ID: %u   SSID: %-32s   RSSI: %4d dBm   Ch.: %3d   MAC: %02x:%02x:%02x:%02x:%02x:%02x   Sec.: %u\r\n",
+        printf("ID: %2u   SSID: %-32s   RSSI: %4d dBm   Ch.: %3d   MAC: %02x:%02x:%02x:%02x:%02x:%02x   Sec.: %u\r\n",
             current_id++,
             network.ssid, network.rssi, network.channel,
             network.bssid[0], network.bssid[1], network.bssid[2], network.bssid[3], network.bssid[4], network.bssid[5],
@@ -122,8 +122,16 @@ int main( void ){
 
         // Do your networking stuff
         if( !wifi_connected && station.connected() ){
-            printf( "Connected to network!\r\n" );
+            cancel_repeating_timer( &led_timer );
+             add_repeating_timer_ms( 150, toggleLed, &toggle_led, &led_timer );
             wifi_connected = true;
+        }
+        
+        // Connection lost
+        if( wifi_connected && !station.connected() ){
+            cancel_repeating_timer( &led_timer );
+            add_repeating_timer_ms( 500, toggleLed, &toggle_led, &led_timer );
+            wifi_connected = false;
         }
 
         // Toggle LED
