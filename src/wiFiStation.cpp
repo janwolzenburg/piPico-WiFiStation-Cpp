@@ -1,7 +1,7 @@
 /*!
  * @file wiFiStation.cpp
  * @author janwolzenburg (kontakt@janwolzenburg.de)
- * @brief 
+ * @brief Implementation of WiFiStation class
  * @version 1.0
  * @date 2024-01-20
  * 

@@ -1,11 +1,9 @@
 /*!
  * @file example.cpp
  * @author janwolzenburg: (kontakt@janwolzenburg.de)
- * @brief 
+ * @brief Example for usage of WiFiStation class
  * @version 1.0
  * @date 2024-01-20
- * 
- * @copyright Copyright (c) 2024
  * 
  */
 
