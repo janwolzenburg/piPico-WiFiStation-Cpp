@@ -45,7 +45,6 @@ else()
         pico_stdlib
         pico_time
         pico_cyw43_arch_lwip_threadsafe_background 
-        pico_time
     )
 
     pico_enable_stdio_usb( piPicoWiFiStation 1 )     # Enable serial data over USB

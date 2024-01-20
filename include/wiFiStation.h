@@ -3,7 +3,7 @@
 
 /*!
  * @file wiFiStation.h
- * @author janwolzenburg (kontakt@janwolzenburg.de)
+ * @author janwolzenburg
  * @brief Class definition of WiFiStation
  * @version 1.0
  * @date 2024-01-20

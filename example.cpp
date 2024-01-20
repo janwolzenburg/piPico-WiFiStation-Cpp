@@ -1,6 +1,6 @@
 /*!
  * @file example.cpp
- * @author janwolzenburg: (kontakt@janwolzenburg.de)
+ * @author janwolzenburg
  * @brief Example for usage of WiFiStation class
  * @version 1.0
  * @date 2024-01-20

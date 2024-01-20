@@ -1,6 +1,6 @@
 /*!
  * @file wiFiStation.cpp
- * @author janwolzenburg (kontakt@janwolzenburg.de)
+ * @author janwolzenburg
  * @brief Implementation of WiFiStation class
  * @version 1.0
  * @date 2024-01-20
@@ -10,6 +10,7 @@
 #include <algorithm>
 
 #include "wiFiStation.h"
+
 
 uint32_t WiFiStation::connection_check_interval = 500;
 
@@ -47,13 +48,16 @@ WiFiStation::WiFiStation( const string ssid, const string password, const uint32
     }
 }
 
+
 WiFiStation::WiFiStation( void ) :
     WiFiStation{ "", "", CYW43_AUTH_OPEN }
 {}
 
+
 WiFiStation::~WiFiStation( void ){
     disconnect();
 }
+
 
 int WiFiStation::initialise( uint32_t country ){
     int return_code = cyw43_arch_init_with_country( country );
