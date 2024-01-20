@@ -12,4 +12,4 @@ The CMakeLists is configured to build the example. If you want to use the librar
 Class functionality is not thoroughly tested. So check for your application the edge cases. Also the authentification types which are returned by pico_cyw43_arch library functions are not documented. See "getAuthentificationFromScanResult()" method for details.
 
 ## Example
-The example uses the UART over USB for an interface with the user. When powered on the Pi Pico waits some seconds and scans for networks. You can choose a network and enter the password. You will be notified when the connection succeeds or fails.
+The example uses the UART over USB for an interface with the user. When powered on the Pi Pico waits some seconds and scans for networks. Be fast when opening your serial terminal like putty or you won't see the output. You can choose a network and enter the password. You will be notified when the connection succeeds or fails.
