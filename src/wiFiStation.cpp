@@ -7,8 +7,11 @@
  * 
  */
 
+#include <algorithm>
+
 #include "wiFiStation.h"
 
+uint32_t WiFiStation::connection_check_interval = 500;
 
 bool WiFiStation::one_instance_connecting_ = false;
 bool WiFiStation::one_instance_connected_ = false;
@@ -59,72 +62,29 @@ int WiFiStation::initialise( uint32_t country ){
         return return_code;
     }
 
+    // Enter station mode
     cyw43_arch_enable_sta_mode();
 
+    // Cancel timer if registered
+    cancel_repeating_timer( &connection_check_timer_ );
+
     // Add repeating timer
-    if( add_repeating_timer_ms( 500, checkConnection, nullptr, &connection_check_timer_ ) == false ){
+    if( add_repeating_timer_ms( connection_check_interval, checkConnection, nullptr, &connection_check_timer_ ) == false ){
         printf( "Repeating timer for connection check could not be started!\r\n" );   
-        return -2;
+        return -1;
     }
 
     return 0;
 }
 
+
 void WiFiStation::deinitialise( void ){
+    if( connected_station_ != nullptr ){
+        connected_station_->disconnect();
+    }
     cyw43_arch_deinit();
 }
 
-bool WiFiStation::checkConnection( repeating_timer_t* timer ){
-
-    // No station connected or connection -> leave but keep timer running
-    if( connected_station_ == nullptr ){
-        return true;
-    }
-
-    int connection_status = cyw43_wifi_link_status( &cyw43_state, CYW43_ITF_STA );
-
-    // One station trying to connect?
-    if( one_instance_connecting_ ){
-        
-        // Check state
-        switch( connection_status ){
-            
-            // Connection up
-            case CYW43_LINK_JOIN:
-            case CYW43_LINK_UP:
-                one_instance_connected_ = true;
-                one_instance_connecting_ = false;
-                connected_station_->connected_ = true;            
-                
-                printf( "Station connected!\r\n" );
-            break;
-
-            // Bad authentification
-            case CYW43_LINK_BADAUTH:
-                printf( "Bad authentification!\r\n" );
-                one_instance_connecting_ = false;
-
-            default:
-                connected_station_->connect();
-
-            break;
-        }
-        
-    }
-
-    // Check if still connected
-    if( connected_station_->connected_ && connection_status != CYW43_LINK_UP && connection_status != CYW43_LINK_JOIN){
-        printf( "Connection lost!\r\n" );
-        connected_station_->connected_ = false;
-        one_instance_connected_ = false;
-
-        // Try to connect again
-        connected_station_->connect();
-
-    }
-
-    return true;
-}
 
 int WiFiStation::scanForWifis( void ){
 
@@ -138,13 +98,21 @@ int WiFiStation::scanForWifis( void ){
     
 }
 
+
 bool WiFiStation::isScanActive( void ){
     return cyw43_wifi_scan_active( &cyw43_state );
 }
 
+
 vector<cyw43_ev_scan_result_t> WiFiStation::getAvailableWifis( void ){
+
+    std::sort(  available_wifis_.begin(), available_wifis_.end(), 
+                [](const cyw43_ev_scan_result_t& a, const cyw43_ev_scan_result_t& b)
+                    { return a.rssi < b.rssi; });
+
     return available_wifis_;
 }
+
 
 uint32_t WiFiStation::getAuthentificationFromScanResult( const uint8_t authentification_from_scan ){
     uint32_t real_authentification_mode = CYW43_AUTH_OPEN;
@@ -232,6 +200,7 @@ int WiFiStation::connect( void ){
     return 0;
 }
 
+
 int WiFiStation::disconnect( void ){
     
     if( !connected_ )
@@ -245,6 +214,7 @@ int WiFiStation::disconnect( void ){
     return 0;
 }
     
+
 int WiFiStation::scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result ){
     vector<cyw43_ev_scan_result_t>* available_wifis = static_cast<vector<cyw43_ev_scan_result_t>*>( available_wifis_void_ptr );
 
@@ -253,4 +223,57 @@ int WiFiStation::scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan
     
     
     return 0;
+}
+
+
+bool WiFiStation::checkConnection( repeating_timer_t* timer ){
+
+    // No station connected or connection -> leave but keep timer running
+    if( connected_station_ == nullptr ){
+        return true;
+    }
+
+    int connection_status = cyw43_wifi_link_status( &cyw43_state, CYW43_ITF_STA );
+
+    // One station trying to connect?
+    if( one_instance_connecting_ ){
+        
+        // Check state
+        switch( connection_status ){
+            
+            // Connection up
+            case CYW43_LINK_JOIN:
+            case CYW43_LINK_UP:
+                one_instance_connected_ = true;
+                one_instance_connecting_ = false;
+                connected_station_->connected_ = true;            
+                
+                printf( "Station connected!\r\n" );
+            break;
+
+            // Bad authentification
+            case CYW43_LINK_BADAUTH:
+                printf( "Bad authentification!\r\n" );
+                one_instance_connecting_ = false;
+
+            default:
+                connected_station_->connect();
+
+            break;
+        }
+        
+    }
+
+    // Check if still connected
+    if( connected_station_->connected_ && connection_status != CYW43_LINK_UP && connection_status != CYW43_LINK_JOIN){
+        printf( "Connection lost!\r\n" );
+        connected_station_->connected_ = false;
+        one_instance_connected_ = false;
+
+        // Try to connect again
+        connected_station_->connect();
+
+    }
+
+    return true;
 }

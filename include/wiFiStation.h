@@ -18,6 +18,7 @@ using std::vector;
 #include "pico/time.h"
 #include "pico/cyw43_arch.h"
 
+
 // Max length of ssid
 constexpr size_t ssid_size = sizeof( cyw43_ev_scan_result_t::ssid );
 // Max length of password
@@ -32,57 +33,141 @@ class WiFiStation{
 
     public:
 
+    /*!
+     * @brief Constructor
+     * 
+     * @param ssid WiFi network SSID
+     * @param password Password. Empty when open
+     * @param authentification Authentification type. As defined in cyw43_ll.h 
+     */
     WiFiStation( const string ssid, const string password, const uint32_t authentification );
 
+    /*!
+     * @brief Default constructor
+     * 
+     */
     WiFiStation( void );
 
+    /*!
+     * @brief No copy contructor
+     *
+     */
     WiFiStation( const WiFiStation& wifi_station ) = delete;
 
+    /*!
+     * @brief Destructor. Disconnects
+     * 
+     */
     ~WiFiStation( void );
 
+    /*!
+     * @brief Copy assignment deleted
+     *
+     */
     WiFiStation& operator=( const WiFiStation& wifi_station ) = delete;
 
+    /*!
+     * @brief Initialise CYW43
+     * 
+     * @param country Your country. From cyw43_country.h
+     * @return int 0 when successful
+     */
+    static int initialise( uint32_t country = CYW43_COUNTRY_WORLDWIDE);
 
-    static int initialise( uint32_t country );
-
+    /*!
+     * @brief Disconnect and deinitialise CYW43
+     * 
+     */
     static void deinitialise( void );
 
+    /*!
+     * @brief Start scan for access points
+     * 
+     * @return int 0 on success
+     */
     static int scanForWifis( void );
 
+    /*!
+     * @brief Check if a scan is currently performed
+     * 
+     * @return true When a scan for networks is currently active
+     * @return false Otherwise
+     */
     static bool isScanActive( void );
 
+    /*!
+     * @brief Get available networks found on the last scan
+     * 
+     * @return vector<cyw43_ev_scan_result_t> All networks sorted by RSSI
+     */
     static vector<cyw43_ev_scan_result_t> getAvailableWifis( void );
 
+    /*!
+     * @brief Convert authentification type from scan result to the correct CYW43_AUTH_[...] type 
+     * 
+     * @param authentification_from_scan Authentification type from scan
+     * @return uint32_t CYW43 authentification type
+     */
     static uint32_t getAuthentificationFromScanResult( const uint8_t authentification_from_scan );
 
 
+    /*!
+     * @brief Connect this station to network
+     * @details Does return directly. Check with connected() whether connection was successful
+     * 
+     * @return int 0 on successful start of connection process
+     */
     int connect( void );
 
+    /*!
+     * @brief Disconnect this station
+     * 
+     * @return int -1 when station was not connected
+     */
     int disconnect( void );
 
+    /*!
+     * @brief Get whether station is connected
+     * 
+     * @return true When connected
+     * @return false When not connected
+     */
     bool connected( void ) const{ return connected_; };
 
 
     private:
 
-    string ssid_;                   /*!<*/
-    string password_;               /*!<*/
-    uint32_t authentification_;     /*!<*/
-    bool connected_;                /*!<*/
+    string ssid_;                   /*!<SSID of network*/
+    string password_;               /*!<Password of network*/
+    uint32_t authentification_;     /*!<CYW43 authentification type*/
+    bool connected_;                /*!<Flag if this station is connected*/
 
-    static bool one_instance_connecting_;           /*!<*/
-    static bool one_instance_connected_;            /*!<*/   
-    static class WiFiStation* connected_station_;   /*!<*/
+    static uint32_t connection_check_interval;      /*!<Time in milliseconds to check connection status*/
 
-    static repeating_timer_t connection_check_timer_;       /*!<*/
-    static vector<cyw43_ev_scan_result_t> available_wifis_; /*!<*/
+    static bool one_instance_connecting_;           /*!<Is one instance currently trying to connect*/
+    static bool one_instance_connected_;            /*!<Is one instance connected*/   
+    static class WiFiStation* connected_station_;   /*!<Pointer to instance which is connecting or connected*/
+
+    static repeating_timer_t connection_check_timer_;       /*!<Repeating timer for connection check*/
+    static vector<cyw43_ev_scan_result_t> available_wifis_; /*!<Available networks*/
     
-
+    /*!
+     * @brief Callback for network scan
+     * 
+     * @param available_wifis_void_ptr Void pointer to available_wifis_
+     * @param result One result of scan
+     * @return int Always 0
+     */
     static int scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result );
 
-
+    /*!
+     * @brief Timer callback for repeated connection check
+     * 
+     * @param timer Pointer to repeating timer
+     * @return true Always
+     * @return false Never
+     */
     static bool checkConnection( repeating_timer_t* timer );
-
 
 };
 
