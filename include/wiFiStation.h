@@ -18,7 +18,7 @@ using std::vector;
 #include "pico/time.h"
 #include "pico/cyw43_arch.h"
 
-#define DEBUG
+#define DEBUG               // If defined debug messages will be printed
 
 // Max length of ssid
 constexpr size_t ssid_size = sizeof( cyw43_ev_scan_result_t::ssid );

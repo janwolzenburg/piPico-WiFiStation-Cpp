@@ -273,7 +273,22 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
         return true;
     }
 
+    // Get current status
     int connection_status = cyw43_tcpip_link_status( &cyw43_state, CYW43_ITF_STA );
+
+    // Check if still connected
+    if( !one_instance_connecting_ && connected_station_->connected_ && 
+        connection_status != CYW43_LINK_UP && connection_status != CYW43_LINK_NOIP ){
+        
+        // Previously a station was connected. Not anymore
+        DEPUG_PRINTF( "Connection lost!\r\n" );
+        connected_station_->connected_ = false;
+        one_instance_connecting_ = true;
+
+        // Restart check with longer interval
+        startConnectionCheck( 4 * connection_check_interval );
+    }
+
 
     // Print status change
     if( connection_status != last_connection_state_ ){
@@ -324,20 +339,6 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
         
         cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
         stopConnectionCheck();
-
-        return true;
-    }
-
-    // Check if still connected
-    if( connected_station_->connected_ && connection_status != CYW43_LINK_UP && connection_status != CYW43_LINK_NOIP ){
-        
-        DEPUG_PRINTF( "Connection lost!\r\n" );
-        connected_station_->connected_ = false;
-        one_instance_connected_ = false;
-        one_instance_connecting_ = true;
-
-        // Restart check with longer interval
-        startConnectionCheck( 4 * connection_check_interval );
     }
 
     return true;
