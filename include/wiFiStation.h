@@ -18,6 +18,7 @@ using std::vector;
 #include "pico/time.h"
 #include "pico/cyw43_arch.h"
 
+#define DEBUG
 
 // Max length of ssid
 constexpr size_t ssid_size = sizeof( cyw43_ev_scan_result_t::ssid );
@@ -151,9 +152,11 @@ class WiFiStation{
     string password_;               /*!<Password of network*/
     uint32_t authentification_;     /*!<CYW43 authentification type*/
     bool connected_;                /*!<Flag if this station is connected*/
+    
 
     static bool one_instance_connecting_;           /*!<Is one instance currently trying to connect*/
     static bool one_instance_connected_;            /*!<Is one instance connected*/   
+    static int last_connection_state_;              /*!<Last connection status*/
     static class WiFiStation* connected_station_;   /*!<Pointer to instance which is connecting or connected*/
 
     static repeating_timer_t connection_check_timer_;       /*!<Repeating timer for connection check*/

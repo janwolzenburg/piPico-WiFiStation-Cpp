@@ -8,14 +8,20 @@
  */
 
 #include <algorithm>
-
 #include "wiFiStation.h"
+
+#ifdef DEBUG
+    #define DEPUG_PRINTF(...) printf("DEBUG: " __VA_ARGS__)
+#else
+    #define DEPUG_PRINTF(...) do {} while (0)
+#endif
 
 
 uint32_t WiFiStation::connection_check_interval = 500;
 
 bool WiFiStation::one_instance_connecting_ = false;
 bool WiFiStation::one_instance_connected_ = false;
+int WiFiStation::last_connection_state_ = -10;
 WiFiStation* WiFiStation::connected_station_ = nullptr;
 
 repeating_timer_t WiFiStation::connection_check_timer_ = repeating_timer_t{};
@@ -30,12 +36,12 @@ WiFiStation::WiFiStation( const string ssid, const string password, const uint32
 {
     if( ssid_.length() > ssid_size ){
         ssid_.erase( ssid_size );
-        printf( "SSID to long!\r\n" );
+        DEPUG_PRINTF( "SSID to long!\r\n" );
     }
 
     if( password_.length() > password_size ){
         password_.erase( password_size );
-        printf( "Password to long!\r\n" );
+        DEPUG_PRINTF( "Password to long!\r\n" );
     }
 
     if( authentification_ != CYW43_AUTH_OPEN &&
@@ -44,7 +50,7 @@ WiFiStation::WiFiStation( const string ssid, const string password, const uint32
         authentification_ != CYW43_AUTH_WPA_TKIP_PSK ){
 
         authentification_ = CYW43_AUTH_OPEN;
-        printf( "Authentification mode invalid!\r\n" );
+        DEPUG_PRINTF( "Authentification mode invalid!\r\n" );
     }
 }
 
@@ -62,7 +68,7 @@ WiFiStation::~WiFiStation( void ){
 int WiFiStation::initialise( uint32_t country ){
     int return_code = cyw43_arch_init_with_country( country );
     if( return_code != 0 ){
-        printf( "CYW43 initialisatiion failed with %i\r\n", return_code );
+        DEPUG_PRINTF( "CYW43 initialisatiion failed with %i\r\n", return_code );
         return return_code;
     }
 
@@ -140,13 +146,13 @@ int WiFiStation::connect( const bool is_reconnect ){
 
     // Already connected
     if( connected_ ){
-        printf( "This station already connected!\r\n" );
+        DEPUG_PRINTF( "This station already connected!\r\n" );
         return 0;
     }
 
     // Connected via different instance or connection is in progress
     if( one_instance_connected_ || one_instance_connecting_ ){
-        printf( "Different station already connected or trying to connect!\r\n" );
+        DEPUG_PRINTF( "Different station already connected or trying to connect!\r\n" );
         return -1;
     }
         
@@ -157,7 +163,7 @@ int WiFiStation::connect( const bool is_reconnect ){
     // Check if password is giebn when necessary
     if( authentification_ != CYW43_AUTH_OPEN ){
         if( password_.empty() ){
-            printf( "Password cannot be ampty when network is not open!\r\n" );
+            DEPUG_PRINTF( "Password cannot be ampty when network is not open!\r\n" );
             return -1; 
         }
         password = password_.c_str();
@@ -165,7 +171,7 @@ int WiFiStation::connect( const bool is_reconnect ){
 
     // SSID given? 
     if( ssid_.empty() ){
-        printf("No SSID given!\r\n");
+        DEPUG_PRINTF("No SSID given!\r\n");
         return -1;
     }
         
@@ -176,14 +182,14 @@ int WiFiStation::connect( const bool is_reconnect ){
         authentification_ != CYW43_AUTH_WPA2_MIXED_PSK &&
         authentification_ != CYW43_AUTH_WPA_TKIP_PSK ){
         
-        printf("Authentification mode invalid!\r\n");
+        DEPUG_PRINTF("Authentification mode invalid!\r\n");
         return -1;
     }
 
     one_instance_connecting_ = true;
     connected_station_ = this;
 
-    printf("Connecting...\r\n");
+    DEPUG_PRINTF("Connecting...\r\n");
 
     // Force leave of wifi before connecting to new
     cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
@@ -194,13 +200,13 @@ int WiFiStation::connect( const bool is_reconnect ){
                                                             authentification_ );
 
     if( connection_status != 0 ){
-        printf( "Could not start to connect. Error %u\r\n", connection_status );
+        DEPUG_PRINTF( "Could not start to connect. Error %u\r\n", connection_status );
         return -1;
     }
 
     // Add repeating timer. Longer interval when reconnecting
     if( startConnectionCheck( is_reconnect ? connection_check_interval * 4 : connection_check_interval ) == false ){
-        printf( "Repeating timer for connection check could not be started!\r\n" );   
+        DEPUG_PRINTF( "Repeating timer for connection check could not be started!\r\n" );   
         return -1;
     }
 
@@ -269,70 +275,63 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
 
     int connection_status = cyw43_tcpip_link_status( &cyw43_state, CYW43_ITF_STA );
 
-    // One station trying to connect?
-    if( one_instance_connecting_ ){
-        
+    // Print status change
+    if( connection_status != last_connection_state_ ){
         // Check state
         switch( connection_status ){
             
             // Joining network
-            case CYW43_LINK_JOIN:
-                printf( "Joining...\r\n" );
-            break;
+            case CYW43_LINK_JOIN: DEPUG_PRINTF( "Joining...\r\n" ); break;
 
             // Joined but no IP
-            case CYW43_LINK_NOIP:
-                printf( "Connected, but no IP...\r\n" );
-            break;
+            case CYW43_LINK_NOIP: DEPUG_PRINTF( "Connected, but no IP...\r\n" ); break;
 
             // Connection with ip
-            case CYW43_LINK_UP:
-                one_instance_connected_ = true;
-                one_instance_connecting_ = false;
-                connected_station_->connected_ = true;            
-                startConnectionCheck();
-
-                printf( "Station connected!\r\n" );
-            break;
+            case CYW43_LINK_UP: DEPUG_PRINTF( "Station connected!\r\n" ); break;
 
             // Bad authentification
-            case CYW43_LINK_BADAUTH:
-                printf( "Bad authentification!\r\n" );
-               
-                // Stop joining
-                one_instance_connecting_ = false;                
-                one_instance_connected_ = false;
-                connected_station_ = nullptr;
-                
-                cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
-                stopConnectionCheck();
+            case CYW43_LINK_BADAUTH: DEPUG_PRINTF( "Bad authentification!\r\n" ); break;
 
-                return true;
-            break;
+            case CYW43_LINK_FAIL: DEPUG_PRINTF( "Link fail!\r\n" ); break;
 
-            case CYW43_LINK_FAIL:
-                printf( "Link fail!\r\n" );
-            break;
-
-            case CYW43_LINK_DOWN:
-                printf( "Link down!\r\n" );
-            break;
+            case CYW43_LINK_DOWN: DEPUG_PRINTF( "Link down!\r\n" );break;
             
-            case CYW43_LINK_NONET:
-                printf( "No network!\r\n" );
-            break;
+            case CYW43_LINK_NONET: DEPUG_PRINTF( "No network!\r\n" ); break;
 
-            default:
-                
-            break;
+            default: break;
         }
+    }
+
+    // Save current connection status
+    connected_station_->last_connection_state_ = connection_status;
+
+
+    // One station trying to connect and link is up
+    if( one_instance_connecting_ && connection_status == CYW43_LINK_UP ){
+        one_instance_connected_ = true;
+        one_instance_connecting_ = false;
+        connected_station_->connected_ = true;            
+        startConnectionCheck();
+    }
+
+    // One station trying to connect and authentification failure
+    if( one_instance_connecting_ && connection_status == CYW43_LINK_BADAUTH ){
+                       
+        // Stop joining
+        one_instance_connecting_ = false;                
+        one_instance_connected_ = false;
+        connected_station_ = nullptr;
         
+        cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
+        stopConnectionCheck();
+
+        return true;
     }
 
     // Check if still connected
     if( connected_station_->connected_ && connection_status != CYW43_LINK_UP && connection_status != CYW43_LINK_NOIP ){
         
-        printf( "Connection lost!\r\n" );
+        DEPUG_PRINTF( "Connection lost!\r\n" );
         connected_station_->connected_ = false;
         one_instance_connected_ = false;
         one_instance_connecting_ = true;
