@@ -22,7 +22,7 @@ pico_sdk_init()
 
 # CYW43 must be target
 if (NOT TARGET pico_cyw43_arch AND TARGET tinyusb_device)
-    message("Skipping build as WiFi support is not available")
+    message("Skipping build as WiFi and USB support is not available")
 
 else()
 
