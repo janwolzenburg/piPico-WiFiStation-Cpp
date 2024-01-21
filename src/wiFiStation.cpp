@@ -186,7 +186,7 @@ int WiFiStation::connect( const bool is_reconnect ){
     printf("Connecting...\r\n");
 
     // Reset connection
-    cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
+    //cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
 
     // Try to connect non blocking
     int connection_status = cyw43_arch_wifi_connect_async(  ssid_.c_str(), 
@@ -213,15 +213,30 @@ int WiFiStation::disconnect( void ){
     if( !connected_ )
         return -1;
     
+    stopConnectionCheck();
     cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
     connected_ = false;
     one_instance_connected_ = false;
     connected_station_ = nullptr;
-    stopConnectionCheck();
 
     return 0;
 }
     
+
+void WiFiStation::stopConnecting( void ){
+    if( one_instance_connecting_ && connected_station_ == this ){
+        
+        one_instance_connecting_ = false;
+        connected_station_ = nullptr;
+        connected_ = false;
+        one_instance_connected_ = false;
+
+        stopConnectionCheck();
+        cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
+
+    }
+}
+
 
 int WiFiStation::scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result ){
     vector<cyw43_ev_scan_result_t>* available_wifis = static_cast<vector<cyw43_ev_scan_result_t>*>( available_wifis_void_ptr );
@@ -264,11 +279,12 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
             
             // Joining network
             case CYW43_LINK_JOIN:
+                printf( "Joining...\r\n" );
             break;
 
             // Joined but no IP
             case CYW43_LINK_NOIP:
-                printf( "Connected, but no IP.\r\n" );
+                printf( "Connected, but no IP...\r\n" );
             break;
 
             // Connection with ip
@@ -296,12 +312,20 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
                 return true;
             break;
 
-            // _FAIL, _DOWN, _NONET
+            case CYW43_LINK_FAIL:
+                printf( "Link fail!\r\n" );
+            break;
+
+            case CYW43_LINK_DOWN:
+                printf( "Link down!\r\n" );
+            break;
+            
+            case CYW43_LINK_NONET:
+                printf( "No network!\r\n" );
+            break;
+
             default:
                 
-                one_instance_connecting_ = false;           
-                connected_station_->connect( true );
-
             break;
         }
         
@@ -313,9 +337,9 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
         printf( "Connection lost!\r\n" );
         connected_station_->connected_ = false;
         one_instance_connected_ = false;
-
+        one_instance_connecting_ = true;
         // Try to connect again
-        connected_station_->connect( true );
+        //connected_station_->connect( true );
 
     }
 

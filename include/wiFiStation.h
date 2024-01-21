@@ -27,11 +27,14 @@ constexpr size_t password_size = 63;
 
 /*!
  * @brief Class to connect to a wifi as a station
- * @details Uses polling - so static functions poll() must be called regularly 
+ * @details Connect to one wifi network. When connection is lost - instance will retry to connect regularly.
+ *          Reqiures one timer slot. Not tested with multithreading
  */
 class WiFiStation{
 
     public:
+
+    static uint32_t connection_check_interval;      /*!<Time in milliseconds to check connection status*/
 
     /*!
      * @brief Constructor
@@ -135,6 +138,12 @@ class WiFiStation{
      */
     bool connected( void ) const{ return connected_; };
 
+    /*!
+     * @brief Stop current connection attemtps
+     * 
+     */
+    void stopConnecting( void );
+
 
     private:
 
@@ -143,8 +152,6 @@ class WiFiStation{
     uint32_t authentification_;     /*!<CYW43 authentification type*/
     bool connected_;                /*!<Flag if this station is connected*/
 
-    static uint32_t connection_check_interval;      /*!<Time in milliseconds to check connection status*/
-
     static bool one_instance_connecting_;           /*!<Is one instance currently trying to connect*/
     static bool one_instance_connected_;            /*!<Is one instance connected*/   
     static class WiFiStation* connected_station_;   /*!<Pointer to instance which is connecting or connected*/
@@ -152,6 +159,7 @@ class WiFiStation{
     static repeating_timer_t connection_check_timer_;       /*!<Repeating timer for connection check*/
     static vector<cyw43_ev_scan_result_t> available_wifis_; /*!<Available networks*/
     
+
     /*!
      * @brief Callback for network scan
      * 
@@ -161,8 +169,21 @@ class WiFiStation{
      */
     static int scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result );
 
+    /*!
+     * @brief Start repeating connection check
+     * 
+     * @param interval Time in milliseconds to check the connection status
+     * @return true Always
+     * @return false Always
+     */
     static bool startConnectionCheck( const uint32_t interval = connection_check_interval );
 
+    /*!
+     * @brief Stop repeating connection check
+     * 
+     * @return true Always 
+     * @return false Always
+     */
     static bool stopConnectionCheck( void );
 
     /*!
