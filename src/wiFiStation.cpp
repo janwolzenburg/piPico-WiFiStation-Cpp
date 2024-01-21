@@ -338,6 +338,9 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
         connected_station_->connected_ = false;
         one_instance_connected_ = false;
         one_instance_connecting_ = true;
+
+        // Restart check with longer interval
+        startConnectionCheck( 4 * connection_check_interval );
         // Try to connect again
         //connected_station_->connect( true );
 
