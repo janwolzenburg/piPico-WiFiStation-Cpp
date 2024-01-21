@@ -185,8 +185,8 @@ int WiFiStation::connect( const bool is_reconnect ){
 
     printf("Connecting...\r\n");
 
-    // Reset connection
-    //cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
+    // Force leave of wifi before connecting to new
+    cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
 
     // Try to connect non blocking
     int connection_status = cyw43_arch_wifi_connect_async(  ssid_.c_str(), 
@@ -269,8 +269,6 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
 
     int connection_status = cyw43_tcpip_link_status( &cyw43_state, CYW43_ITF_STA );
 
-    //printf("Current state: %i\r\n", connection_status );
-
     // One station trying to connect?
     if( one_instance_connecting_ ){
         
@@ -341,9 +339,6 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
 
         // Restart check with longer interval
         startConnectionCheck( 4 * connection_check_interval );
-        // Try to connect again
-        //connected_station_->connect( true );
-
     }
 
     return true;
