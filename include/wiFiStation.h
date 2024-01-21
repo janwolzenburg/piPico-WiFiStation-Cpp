@@ -29,6 +29,7 @@ constexpr size_t password_size = 63;
 /*!
  * @brief Class to connect to a wifi as a station
  * @details Connect to one wifi network. When connection is lost - instance will retry to connect regularly.
+ *          It should be possible to have more than one instance. But only one intstance can be connected.
  *          Reqiures one timer slot. Not tested with multithreading
  */
 class WiFiStation{
