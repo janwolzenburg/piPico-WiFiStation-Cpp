@@ -167,7 +167,7 @@ class WiFiStation{
      * @return true When connected
      * @return false When not connected
      */
-    bool connected( void ) const{ return connected_; };
+    bool connected( void ) const;
 
     /*!
      * @brief Stop current connection attemtps

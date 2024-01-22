@@ -253,7 +253,13 @@ int WiFiStation::disconnect( void ){
 
     return 0;
 }
-    
+
+
+bool WiFiStation::connected( void ) const{ 
+    checkConnection( &connection_check_timer_ );
+    return connected_; 
+}
+
 
 void WiFiStation::stopConnecting( void ){
     if( one_instance_connecting_ && connected_station_ == this ){
