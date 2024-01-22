@@ -164,10 +164,12 @@ class WiFiStation{
     /*!
      * @brief Get whether station is connected
      * 
+     * @param refresh_now Refresh before return
+     * 
      * @return true When connected
      * @return false When not connected
      */
-    bool connected( void );
+    bool connected( const bool refresh_now = false );
 
     /*!
      * @brief Stop current connection attemtps

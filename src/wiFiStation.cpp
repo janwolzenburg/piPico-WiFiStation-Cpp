@@ -255,8 +255,10 @@ int WiFiStation::disconnect( void ){
 }
 
 
-bool WiFiStation::connected( void ){ 
-    checkConnection( &connection_check_timer_ );
+bool WiFiStation::connected( const bool refresh_now ){ 
+    if( refresh_now )
+        checkConnection( &connection_check_timer_ );
+    
     return connected_; 
 }
 
