@@ -116,6 +116,10 @@ int main( void ){
     // Flag to know when connection was made
     bool wifi_connected = false;
 
+    // Reconnected once
+    bool reconnected_once = false;
+    uint64_t connected_at = UINT64_MAX;
+
 
     // Main loop
     while( true ){
@@ -123,10 +127,20 @@ int main( void ){
         // Do your networking stuff
         if( !wifi_connected && station.connected() ){
             cancel_repeating_timer( &led_timer );
-             add_repeating_timer_ms( 150, toggleLed, &toggle_led, &led_timer );
+            add_repeating_timer_ms( 150, toggleLed, &toggle_led, &led_timer );
             wifi_connected = true;
+
+            connected_at = time_us_64();
         }
         
+        // Use move-assigment after two seconds
+        if( station.connected() && !reconnected_once && time_us_64() - connected_at > 2000000 ){
+
+            reconnected_once = true;
+            station = std::move( WiFiStation{ station.ssid(), station.password(), station.authentification() } );
+            station.connect();
+        }
+
         // Connection lost
         if( wifi_connected && !station.connected() ){
             cancel_repeating_timer( &led_timer );

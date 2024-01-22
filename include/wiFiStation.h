@@ -72,6 +72,14 @@ class WiFiStation{
     WiFiStation& operator=( const WiFiStation& wifi_station ) = delete;
 
     /*!
+     * @brief Move assignment. Disconnects this and connects to network of wifi_station if connected
+     * 
+     * @param wifi_station Station to move data from
+     * @return WiFiStation& Reference to this
+     */
+    WiFiStation& operator=( WiFiStation&& wifi_station );
+
+    /*!
      * @brief Initialise CYW43
      * 
      * @param country Your country. From cyw43_country.h
@@ -131,6 +139,27 @@ class WiFiStation{
      * @return int -1 when station was not connected
      */
     int disconnect( void );
+
+    /*!
+     * @brief Get SSID
+     *  
+     * @return string The SSID
+     */
+    string ssid( void ) const{ return ssid_; };
+
+    /*!
+     * @brief Get password
+     * 
+     * @return string The password
+     */
+    string password( void ) const{ return password_; };
+
+    /*!
+     * @brief Get authentification mode
+     * 
+     * @return uint32_t The authentification mode
+     */
+    uint32_t authentification( void ) const{ return authentification_; };
 
     /*!
      * @brief Get whether station is connected

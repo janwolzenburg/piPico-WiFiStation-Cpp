@@ -65,6 +65,31 @@ WiFiStation::~WiFiStation( void ){
 }
 
 
+WiFiStation& WiFiStation::operator=( WiFiStation&& wifi_station ){
+    
+    stopConnectionCheck();
+
+    // Disconnect this station before copying from other
+    if( connected_ )
+        this->disconnect();
+
+    // Copy data
+    ssid_ = wifi_station.ssid_;
+    password_ = wifi_station.password_;
+    authentification_ = wifi_station.authentification_;
+    connected_ = wifi_station.connected_;
+
+    // If active station is source update pointer to this
+    if( connected_station_ == &wifi_station ){
+        connected_station_ = this;
+    }
+
+    startConnectionCheck();
+    return *this;
+
+}
+
+
 int WiFiStation::initialise( uint32_t country ){
     int return_code = cyw43_arch_init_with_country( country );
     if( return_code != 0 ){
@@ -81,6 +106,7 @@ int WiFiStation::initialise( uint32_t country ){
     return 0;
 
 }
+
 
 void WiFiStation::deinitialise( void ){
     if( connected_station_ != nullptr ){
