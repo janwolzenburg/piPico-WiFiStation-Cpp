@@ -2,8 +2,8 @@
  * @file wiFiStation.cpp
  * @author janwolzenburg
  * @brief Implementation of WiFiStation class
- * @version 1.1
- * @date 2024-01-22
+ * @version 1.2
+ * @date 2024-01-27
  * 
  */
 
