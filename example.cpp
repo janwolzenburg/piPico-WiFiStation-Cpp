@@ -57,8 +57,11 @@ int main( void ){
     // Scan for networks and wait until scan is finished or 10 seconds passed
     WiFiStation::scanForWifis();
     absolute_time_t scan_end = make_timeout_time_ms( 5000 );
-    while( WiFiStation::isScanActive() && get_absolute_time() < scan_end );
-    
+    while( WiFiStation::isScanActive() && get_absolute_time() < scan_end ){
+        #ifdef USE_POLLING
+        WiFiStation::poll();
+        #endif
+    }
 
     // Get and print available wifis
     vector<cyw43_ev_scan_result_t> available_networks = WiFiStation::getAvailableWifis();
@@ -125,7 +128,7 @@ int main( void ){
     while( true ){
 
         // Do your networking stuff
-        if( !wifi_connected && station.connected() ){
+        if( !wifi_connected && station.connected( false ) ){
             cancel_repeating_timer( &led_timer );
             add_repeating_timer_ms( 150, toggleLed, &toggle_led, &led_timer );
             wifi_connected = true;
@@ -134,11 +137,16 @@ int main( void ){
         }
         
         // Use move-assigment after two seconds
-        if( station.connected() && !reconnected_once && time_us_64() - connected_at > 2000000 ){
+        if( station.connected( false ) && !reconnected_once && time_us_64() - connected_at > 2000000 ){
 
             reconnected_once = true;
             station = std::move( WiFiStation{ station.ssid(), station.password(), station.authentification() } );
             station.connect();
+        }
+
+        // Print success
+        if( reconnected_once && station.connected( false ) ){
+            printf( "Reconnection after move-assignment successful!\r\n" );
         }
 
         // Connection lost
@@ -154,6 +162,9 @@ int main( void ){
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, !cyw43_arch_gpio_get( CYW43_WL_GPIO_LED_PIN ) );
         }
 
+        #ifdef USE_POLLING
+        WiFiStation::poll();
+        #endif
     }
 
     station.disconnect();

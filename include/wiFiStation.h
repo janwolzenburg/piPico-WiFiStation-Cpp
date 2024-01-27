@@ -36,7 +36,7 @@ class WiFiStation{
 
     public:
 
-    static uint32_t connection_check_interval;      /*!<Time in milliseconds to check connection status*/
+    static uint32_t connection_check_interval_us;      /*!<Time in milliseconds to check connection status*/
 
     /*!
      * @brief Constructor
@@ -123,6 +123,13 @@ class WiFiStation{
      */
     static uint32_t getAuthentificationFromScanResult( const uint8_t authentification_from_scan );
 
+    /*!
+     * @brief Poll for changes. Call regularly
+     * 
+     */
+    #ifdef USE_POLLING
+    static void poll( void );
+    #endif
 
     /*!
      * @brief Connect this station to network
@@ -185,13 +192,18 @@ class WiFiStation{
     uint32_t authentification_;     /*!<CYW43 authentification type*/
     bool connected_;                /*!<Flag if this station is connected*/
     
-
     static bool one_instance_connecting_;           /*!<Is one instance currently trying to connect*/
     static bool one_instance_connected_;            /*!<Is one instance connected*/   
     static int last_connection_state_;              /*!<Last connection status*/
     static class WiFiStation* connected_station_;   /*!<Pointer to instance which is connecting or connected*/
 
+    #ifdef USE_POLLING
+    static uint64_t last_connection_check_;          /*!<Last time the connection state was checked*/
+    static bool check_connection_;                  /*!<Flag for regularly checking connection*/    
+    #else
     static repeating_timer_t connection_check_timer_;       /*!<Repeating timer for connection check*/
+    #endif
+    
     static vector<cyw43_ev_scan_result_t> available_wifis_; /*!<Available networks*/
     
 
@@ -207,11 +219,11 @@ class WiFiStation{
     /*!
      * @brief Start repeating connection check
      * 
-     * @param interval Time in milliseconds to check the connection status
+     * @param interval Time in microseconds to check the connection status
      * @return true Always
      * @return false Always
      */
-    static bool startConnectionCheck( const uint32_t interval = connection_check_interval );
+    static bool startConnectionCheck( const uint64_t interval = connection_check_interval_us );
 
     /*!
      * @brief Stop repeating connection check
@@ -224,11 +236,17 @@ class WiFiStation{
     /*!
      * @brief Timer callback for repeated connection check
      * 
-     * @param timer Pointer to repeating timer
+     * @param timer Pointer to repeating timer (Only when using async)
      * @return true Always
      * @return false Never
      */
-    static bool checkConnection( repeating_timer_t* timer );
+    static bool checkConnection( 
+        #ifdef USE_POLLING
+            void
+        #else
+            repeating_timer_t* timer
+        #endif
+    );
 
 };
 

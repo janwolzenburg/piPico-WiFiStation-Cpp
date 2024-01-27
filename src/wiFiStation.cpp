@@ -17,14 +17,20 @@
 #endif
 
 
-uint32_t WiFiStation::connection_check_interval = 500;
+uint32_t WiFiStation::connection_check_interval_us = 1000000;
 
 bool WiFiStation::one_instance_connecting_ = false;
 bool WiFiStation::one_instance_connected_ = false;
 int WiFiStation::last_connection_state_ = -10;
 WiFiStation* WiFiStation::connected_station_ = nullptr;
 
+#ifdef USE_POLLING
+uint64_t WiFiStation::last_connection_check_ = 0;
+bool WiFiStation::check_connection_ = false;
+#else
 repeating_timer_t WiFiStation::connection_check_timer_ = repeating_timer_t{};
+#endif
+
 vector<cyw43_ev_scan_result_t> WiFiStation::available_wifis_ = vector<cyw43_ev_scan_result_t>( 0, cyw43_ev_scan_result_t{} );
 
 
@@ -100,8 +106,11 @@ int WiFiStation::initialise( uint32_t country ){
     // Enter station mode
     cyw43_arch_enable_sta_mode();
 
+    #ifndef USE_POLLING
     // Cancel timer if registered
     cancel_repeating_timer( &connection_check_timer_ );
+    #endif
+
 
     return 0;
 
@@ -231,7 +240,7 @@ int WiFiStation::connect( const bool is_reconnect ){
     }
 
     // Add repeating timer. Longer interval when reconnecting
-    if( startConnectionCheck( is_reconnect ? connection_check_interval * 4 : connection_check_interval ) == false ){
+    if( startConnectionCheck( is_reconnect ? connection_check_interval_us * 4 : connection_check_interval_us ) == false ){
         DEPUG_PRINTF( "Repeating timer for connection check could not be started!\r\n" );   
         return -1;
     }
@@ -256,9 +265,14 @@ int WiFiStation::disconnect( void ){
 
 
 bool WiFiStation::connected( const bool refresh_now ){ 
-    if( refresh_now )
+    if( refresh_now ){
+        #ifdef USE_POLLING
+        checkConnection();
+        #else
         checkConnection( &connection_check_timer_ );
-    
+        #endif
+    }
+
     return connected_; 
 }
 
@@ -277,6 +291,20 @@ void WiFiStation::stopConnecting( void ){
     }
 }
 
+#ifdef USE_POLLING
+void WiFiStation::poll( void ){
+    cyw43_arch_poll();
+
+    // Check if check is active and timeout passed
+    if( check_connection_ && last_connection_check_ + connection_check_interval_us < time_us_64() ){
+        checkConnection();
+        last_connection_check_ = time_us_64();
+    }
+        
+}
+
+#endif
+
 
 int WiFiStation::scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result ){
     vector<cyw43_ev_scan_result_t>* available_wifis = static_cast<vector<cyw43_ev_scan_result_t>*>( available_wifis_void_ptr );
@@ -289,18 +317,36 @@ int WiFiStation::scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan
 }
 
 
-bool WiFiStation::startConnectionCheck( const uint32_t interval ){
+bool WiFiStation::startConnectionCheck( const uint64_t interval ){
     stopConnectionCheck();
-    return add_repeating_timer_ms( interval, checkConnection, nullptr, &connection_check_timer_ );
+
+    #ifdef USE_POLLING
+        check_connection_ = true;
+        return true;
+    #else
+        return add_repeating_timer_ms( interval / 1000, checkConnection, nullptr, &connection_check_timer_ );
+    #endif
+    
 }
 
 
 bool WiFiStation::stopConnectionCheck( void ){
-    return cancel_repeating_timer( &connection_check_timer_ );
+    #ifdef USE_POLLING
+        check_connection_ = false;
+        return true;
+    #else
+        return cancel_repeating_timer( &connection_check_timer_ );
+    #endif
+    
 }
 
-
-bool WiFiStation::checkConnection( repeating_timer_t* timer ){
+bool WiFiStation::checkConnection( 
+    #ifdef USE_POLLING
+        void
+    #else
+        repeating_timer_t* timer 
+    #endif
+){
 
     // No station connected or connection -> leave but keep timer running
     if( connected_station_ == nullptr ){
@@ -320,7 +366,7 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
         one_instance_connecting_ = true;
 
         // Restart check with longer interval
-        startConnectionCheck( 4 * connection_check_interval );
+        startConnectionCheck( 4 * connection_check_interval_us );
     }
 
 
@@ -364,7 +410,7 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
     }
 
     // One station trying to connect and authentification failure
-    if( one_instance_connecting_ && connection_status == CYW43_LINK_BADAUTH ){
+    /*if( one_instance_connecting_ && connection_status == CYW43_LINK_BADAUTH ){
                        
         // Stop joining
         one_instance_connecting_ = false;                
@@ -373,7 +419,7 @@ bool WiFiStation::checkConnection( repeating_timer_t* timer ){
         
         cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
         stopConnectionCheck();
-    }
+    }*/
 
     return true;
 }

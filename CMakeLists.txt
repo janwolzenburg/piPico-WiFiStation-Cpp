@@ -7,6 +7,10 @@ include( pico_sdk_import.cmake )
 # Setup project
 project( piPicoWiFiStation CXX C ASM )
 
+# Set to use polling
+set( use_polling ON )
+
+
 set(PICO_BOARD pico_w)          # Obviously Pi Pico-W necessary
 set(CMAKE_C_STANDARD 11)        # C11
 set(CMAKE_CXX_STANDARD 17)      # C++17
@@ -33,6 +37,11 @@ else()
         example.cpp
     )
 
+    if( ${use_polling} )
+        message("Using polling")
+        target_compile_definitions( piPicoWiFiStation PUBLIC USE_POLLING)
+    endif()
+
     # Header files
     target_include_directories( 
         piPicoWiFiStation PUBLIC
@@ -44,8 +53,22 @@ else()
         piPicoWiFiStation
         pico_stdlib
         pico_time
-        pico_cyw43_arch_lwip_threadsafe_background 
     )
+
+    if( ${use_polling} )
+        target_link_libraries(
+            piPicoWiFiStation
+            pico_cyw43_arch_lwip_poll 
+        )
+    else()
+        target_link_libraries(
+            piPicoWiFiStation
+            pico_cyw43_arch_lwip_threadsafe_background
+        )
+    endif()
+
+     
+
 
     pico_enable_stdio_usb( piPicoWiFiStation 1 )     # Enable serial data over USB
     pico_enable_stdio_uart( piPicoWiFiStation 0 )    # Disable serial data over UART
