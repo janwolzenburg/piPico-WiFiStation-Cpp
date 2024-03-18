@@ -5,8 +5,8 @@
  * @file wiFiStation.h
  * @author janwolzenburg
  * @brief Class definition of WiFiStation
- * @version 1.2
- * @date 2024-01-27
+ * @version 1.3
+ * @date 2024-03-18
  * 
  */
 

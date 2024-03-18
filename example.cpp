@@ -2,8 +2,8 @@
  * @file example.cpp
  * @author janwolzenburg
  * @brief Example for usage of WiFiStation class
- * @version 1.1
- * @date 2024-01-22
+ * @version 1.2
+ * @date 2024-03-18
  * 
  */
 
