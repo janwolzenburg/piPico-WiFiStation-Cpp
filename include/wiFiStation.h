@@ -18,6 +18,7 @@ using std::vector;
 #include "pico/time.h"
 #include "pico/cyw43_arch.h"
 
+
 #define DEBUG               // If defined debug messages will be printed
 
 // Max length of ssid
@@ -81,6 +82,7 @@ class WiFiStation{
 
     /*!
      * @brief Initialise CYW43
+     * @details If enabled watchdog must be started manually
      * 
      * @param country Your country. From cyw43_country.h
      * @return int 0 when successful
@@ -130,6 +132,24 @@ class WiFiStation{
     #ifdef USE_POLLING
     static void poll( void );
     #endif
+
+    /*!
+     * @brief Update watchdog
+     * @details Call regularly or device will reboot. Is called in "poll()", when polling is enabled
+     * 
+     */
+    #ifdef USE_WATCHDOG
+    static void updateWatchdog( void );
+    #endif
+
+    /*!
+     * @brief Start watchdog
+     * 
+     */
+    #ifdef USE_WATCHDOG
+    static void startWatchdog( void );
+    #endif
+
 
     /*!
      * @brief Connect this station to network

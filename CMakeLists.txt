@@ -10,6 +10,9 @@ project( piPicoWiFiStation CXX C ASM )
 # Set to use polling
 set( use_polling ON )
 
+# Set to enable watchdog timer
+set( use_watchdog ON )
+
 
 set(PICO_BOARD pico_w)          # Obviously Pi Pico-W necessary
 set(CMAKE_C_STANDARD 11)        # C11
@@ -37,11 +40,6 @@ else()
         example.cpp
     )
 
-    if( ${use_polling} )
-        message("Using polling")
-        target_compile_definitions( piPicoWiFiStation PUBLIC USE_POLLING)
-    endif()
-
     # Header files
     target_include_directories( 
         piPicoWiFiStation PUBLIC
@@ -60,6 +58,8 @@ else()
             piPicoWiFiStation
             pico_cyw43_arch_lwip_poll 
         )
+        message("Using polling")
+        target_compile_definitions( piPicoWiFiStation PUBLIC USE_POLLING)
     else()
         target_link_libraries(
             piPicoWiFiStation
@@ -67,7 +67,15 @@ else()
         )
     endif()
 
-     
+    
+    if( ${use_watchdog} )
+        target_link_libraries(
+            piPicoWiFiStation
+            hardware_watchdog
+        )
+        message("Using Watchdog")
+        target_compile_definitions( piPicoWiFiStation PUBLIC USE_WATCHDOG)
+    endif()     
 
 
     pico_enable_stdio_usb( piPicoWiFiStation 1 )     # Enable serial data over USB

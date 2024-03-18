@@ -8,6 +8,7 @@
  */
 
 #include <algorithm>
+#include "hardware/watchdog.h"
 #include "wiFiStation.h"
 
 #ifdef DEBUG
@@ -58,6 +59,8 @@ WiFiStation::WiFiStation( const string ssid, const string password, const uint32
         authentification_ = CYW43_AUTH_OPEN;
         DEPUG_PRINTF( "Authentification mode invalid!\r\n" );
     }
+
+
 }
 
 
@@ -111,6 +114,12 @@ int WiFiStation::initialise( uint32_t country ){
     cancel_repeating_timer( &connection_check_timer_ );
     #endif
 
+    
+    #ifdef USE_WATCHDOG
+    if( watchdog_caused_reboot() ){
+        DEPUG_PRINTF("Rebooted by watchdog\r\n");
+    }
+    #endif
 
     return 0;
 
@@ -300,11 +309,26 @@ void WiFiStation::poll( void ){
         checkConnection();
         last_connection_check_ = time_us_64();
     }
-        
+    
+    #ifdef USE_WATCHDOG
+    updateWatchdog();
+    #endif
+
 }
 
 #endif
 
+#ifdef USE_WATCHDOG
+void WiFiStation::updateWatchdog( void ){
+    watchdog_update(); 
+}
+
+
+void WiFiStation::startWatchdog( void ){
+    watchdog_enable( 1000, true );
+}
+
+#endif
 
 int WiFiStation::scanResult( void *available_wifis_void_ptr, const cyw43_ev_scan_result_t *result ){
     vector<cyw43_ev_scan_result_t>* available_wifis = static_cast<vector<cyw43_ev_scan_result_t>*>( available_wifis_void_ptr );
@@ -408,18 +432,6 @@ bool WiFiStation::checkConnection(
         connected_station_->connected_ = true;            
         startConnectionCheck();
     }
-
-    // One station trying to connect and authentification failure
-    /*if( one_instance_connecting_ && connection_status == CYW43_LINK_BADAUTH ){
-                       
-        // Stop joining
-        one_instance_connecting_ = false;                
-        one_instance_connected_ = false;
-        connected_station_ = nullptr;
-        
-        cyw43_wifi_leave( &cyw43_state, CYW43_ITF_STA );
-        stopConnectionCheck();
-    }*/
 
     return true;
 }

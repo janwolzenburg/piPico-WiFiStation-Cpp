@@ -63,6 +63,7 @@ int main( void ){
         #endif
     }
 
+
     // Get and print available wifis
     vector<cyw43_ev_scan_result_t> available_networks = WiFiStation::getAvailableWifis();
 
@@ -115,12 +116,16 @@ int main( void ){
     
     // Start connection
     station.connect();
+    WiFiStation::startWatchdog();
+
 
     // Flag to know when connection was made
     bool wifi_connected = false;
 
     // Reconnected once
     bool reconnected_once = false;
+    bool message_printed = false;
+
     uint64_t connected_at = UINT64_MAX;
 
 
@@ -145,8 +150,9 @@ int main( void ){
         }
 
         // Print success
-        if( reconnected_once && station.connected( false ) ){
+        if( reconnected_once && station.connected( false ) && !message_printed ){
             printf( "Reconnection after move-assignment successful!\r\n" );
+            message_printed = true;
         }
 
         // Connection lost
@@ -164,6 +170,8 @@ int main( void ){
 
         #ifdef USE_POLLING
         WiFiStation::poll();
+        #else
+        WiFiStation::updateWatchdog();
         #endif
     }
 
